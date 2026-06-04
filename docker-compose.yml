@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:17
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    container_name: cosmos_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=cosmos
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres_password
+    ports:
+      - "5433:5432"
+
+  backend:
+    build: ./backend
+    container_name: cosmos_backend
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_NAME=cosmos
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres_password
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend Service [cite: 173, 228, 631, 633]
+  frontend:
+    build: ./frontend
+    container_name: cosmos_frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
